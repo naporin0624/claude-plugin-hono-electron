@@ -19,7 +19,6 @@
     "zod-validation",
     "factory-pattern"
   ],
-  "category": "architecture",
   "skills": [
     "./skills/hono-ipc-setup",
     "./skills/hono-ipc-patterns"

@@ -27,8 +27,7 @@
         "dependency-injection",
         "zod-validation",
         "factory-pattern"
-      ],
-      "category": "architecture"
+      ]
     }
   ]
 }
