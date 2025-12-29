@@ -5,8 +5,8 @@
   "author": {
     "name": "napochaan"
   },
-  "homepage": "https://github.com/napochaan/hono-electron-ipc",
-  "repository": "https://github.com/napochaan/hono-electron-ipc",
+  "homepage": "https://github.com/naporin0624/claude-plugin-hono-electron",
+  "repository": "https://github.com/naporin0624/claude-plugin-hono-electron",
   "license": "MIT",
   "keywords": [
     "electron",
@@ -15,7 +15,23 @@
     "typescript",
     "rpc",
     "type-safety",
-    "dependency-injection"
+    "dependency-injection",
+    "zod-validation",
+    "factory-pattern"
   ],
-  "category": "architecture"
+  "category": "architecture",
+  "skills": [
+    "./skills/hono-ipc-setup",
+    "./skills/hono-ipc-patterns"
+  ],
+  "commands": [
+    "./commands/init.md",
+    "./commands/add-route.md",
+    "./commands/migrate.md"
+  ],
+  "agents": [
+    "./agents/ipc-analyzer.md",
+    "./agents/route-planner.md",
+    "./agents/migration-executor.md"
+  ]
 }
