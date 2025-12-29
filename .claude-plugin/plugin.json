@@ -1,7 +1,7 @@
 {
   "name": "hono-electron-ipc",
   "version": "1.0.0",
-  "description": "Type-safe IPC communication for Electron applications using Hono RPC. Provides factory pattern with DI, type inference across processes, and Zod validation.",
+  "description": "Type-safe IPC communication for Electron applications using Hono RPC, CQRS architecture, and reactive state management. Provides factory pattern with DI, Observable queries, ResultAsync commands, and Jotai hybrid atoms.",
   "author": {
     "name": "napochaan"
   },
@@ -17,16 +17,28 @@
     "type-safety",
     "dependency-injection",
     "zod-validation",
-    "factory-pattern"
+    "factory-pattern",
+    "cqrs",
+    "rxjs",
+    "observable",
+    "jotai",
+    "reactive",
+    "neverthrow"
   ],
   "skills": [
     "./skills/hono-ipc-setup",
-    "./skills/hono-ipc-patterns"
+    "./skills/hono-ipc-patterns",
+    "./skills/cqrs-pattern",
+    "./skills/jotai-reactive-atoms",
+    "./skills/hono-ipc-routes"
   ],
   "commands": [
     "./commands/init.md",
     "./commands/add-route.md",
-    "./commands/migrate.md"
+    "./commands/migrate.md",
+    "./commands/new-service.md",
+    "./commands/new-route.md",
+    "./commands/new-hybrid-atom.md"
   ],
   "agents": [
     "./agents/ipc-analyzer.md",
