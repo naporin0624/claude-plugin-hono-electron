@@ -1,0 +1,21 @@
+{
+  "name": "hono-electron-ipc",
+  "version": "1.0.0",
+  "description": "Type-safe IPC communication for Electron applications using Hono RPC. Provides factory pattern with DI, type inference across processes, and Zod validation.",
+  "author": {
+    "name": "napochaan"
+  },
+  "homepage": "https://github.com/napochaan/hono-electron-ipc",
+  "repository": "https://github.com/napochaan/hono-electron-ipc",
+  "license": "MIT",
+  "keywords": [
+    "electron",
+    "ipc",
+    "hono",
+    "typescript",
+    "rpc",
+    "type-safety",
+    "dependency-injection"
+  ],
+  "category": "architecture"
+}
