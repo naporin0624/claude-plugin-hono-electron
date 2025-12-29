@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Claude Code plugin for type-safe IPC communication in Electron applications using Hono RPC",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "plugins": [
     {
       "name": "hono-electron-ipc",
       "source": "./",
       "description": "Type-safe IPC communication for Electron applications using Hono RPC, CQRS architecture, and reactive state management. Provides factory pattern with DI, Observable queries, ResultAsync commands, Jotai hybrid atoms, and migration support from traditional IPC.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": {
         "name": "napochaan"
       },
