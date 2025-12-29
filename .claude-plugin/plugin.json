@@ -25,24 +25,7 @@
     "reactive",
     "neverthrow"
   ],
-  "skills": [
-    "./skills/hono-ipc-setup",
-    "./skills/hono-ipc-patterns",
-    "./skills/cqrs-pattern",
-    "./skills/jotai-reactive-atoms",
-    "./skills/hono-ipc-routes"
-  ],
-  "commands": [
-    "./commands/init.md",
-    "./commands/add-route.md",
-    "./commands/migrate.md",
-    "./commands/new-service.md",
-    "./commands/new-route.md",
-    "./commands/new-hybrid-atom.md"
-  ],
-  "agents": [
-    "./agents/ipc-analyzer.md",
-    "./agents/route-planner.md",
-    "./agents/migration-executor.md"
-  ]
+  "skills": "./skills/",
+  "commands": "./commands/",
+  "agents": "./agents/"
 }
