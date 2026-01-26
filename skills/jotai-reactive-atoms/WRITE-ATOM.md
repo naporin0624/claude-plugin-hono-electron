@@ -20,31 +20,12 @@ import { atomWithRefresh } from 'jotai/utils';
 import { client } from '@adapters/client';
 import { usersSource } from '@adapters/ipc-events';
 import { debounce } from '@utils/debounce';
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Error Classes
-// ═══════════════════════════════════════════════════════════════════════════
-
-class ValidationError extends Error {
-  constructor(message = 'Validation failed') {
-    super(message);
-    this.name = 'ValidationError';
-  }
-}
-
-class NotFoundError extends Error {
-  constructor(message = 'Not found') {
-    super(message);
-    this.name = 'NotFoundError';
-  }
-}
-
-class ConflictError extends Error {
-  constructor(message = 'Conflict') {
-    super(message);
-    this.name = 'ConflictError';
-  }
-}
+import {
+  ValidationError,
+  NotFoundError,
+  ConflictError,
+  UnauthorizedError,
+} from '@errors';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Type Definitions
