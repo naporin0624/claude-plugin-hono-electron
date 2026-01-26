@@ -43,6 +43,7 @@ src/
 
 ### 3. Core Files
 
+See [SHARED-DIRECTORY.md](SHARED-DIRECTORY.md) for why the shared/ architecture prevents dependency leakage.
 See [FACTORY-PATTERN.md](FACTORY-PATTERN.md) for complete factory implementation.
 See [REFERENCE.md](REFERENCE.md) for Hono RPC API reference.
 
@@ -173,6 +174,7 @@ Only JSON-serializable data can be sent through IPC:
 
 ## Files Reference
 
+- [SHARED-DIRECTORY.md](SHARED-DIRECTORY.md) - Why shared/ directory prevents dependency leakage
 - [FACTORY-PATTERN.md](FACTORY-PATTERN.md) - Complete DI factory pattern
 - [REFERENCE.md](REFERENCE.md) - Hono RPC API reference
 - [examples/auth-route.ts](examples/auth-route.ts) - Auth route example
