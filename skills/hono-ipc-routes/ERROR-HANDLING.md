@@ -16,28 +16,52 @@ import { ResultAsync, Result } from 'neverthrow';
 
 const DEFAULT_TIMEOUT_MS = 5000;
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Error Classes
+// ═══════════════════════════════════════════════════════════════════════════
+
+export class QueryTimeoutError extends Error {
+  override readonly name = 'QueryTimeoutError';
+  constructor(readonly timeoutMs: number) {
+    super(`Query timed out after ${timeoutMs}ms`);
+  }
+}
+
+export class QueryError extends Error {
+  override readonly name = 'QueryError';
+  constructor(readonly cause: unknown) {
+    super(cause instanceof Error ? cause.message : `${cause}`);
+  }
+}
+
+export type FirstValueFromResultError = QueryTimeoutError | QueryError;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Function Overloads
+// ═══════════════════════════════════════════════════════════════════════════
+
 // Overload: no options
 export function firstValueFromResult<T>(
   observable: Observable<T>
-): Promise<Result<T, Error>>;
+): Promise<Result<T, FirstValueFromResultError>>;
 
 // Overload: timeout only
 export function firstValueFromResult<T>(
   observable: Observable<T>,
   options: { timeout: number }
-): Promise<Result<T, Error>>;
+): Promise<Result<T, FirstValueFromResultError>>;
 
 // Overload: with defaultValue
 export function firstValueFromResult<T, D>(
   observable: Observable<T>,
   options: { timeout?: number; defaultValue: D }
-): Promise<Result<T | D, Error>>;
+): Promise<Result<T | D, FirstValueFromResultError>>;
 
 // Implementation
 export async function firstValueFromResult<T, D = never>(
   observable: Observable<T>,
   options: { timeout?: number; defaultValue?: D } = {}
-): Promise<Result<T | D, Error>> {
+): Promise<Result<T | D, FirstValueFromResultError>> {
   const timeoutMs = options.timeout ?? DEFAULT_TIMEOUT_MS;
   const config = 'defaultValue' in options
     ? { defaultValue: options.defaultValue as D }
@@ -45,11 +69,11 @@ export async function firstValueFromResult<T, D = never>(
 
   return ResultAsync.fromPromise(
     firstValueFrom(observable.pipe(timeout(timeoutMs)), config),
-    (e) => {
+    (e): FirstValueFromResultError => {
       if (e instanceof TimeoutError) {
-        return new Error(`Query timed out after ${timeoutMs}ms`);
+        return new QueryTimeoutError(timeoutMs);
       }
-      return e instanceof Error ? e : new Error(`${e}`);
+      return new QueryError(e);
     }
   );
 }
@@ -168,50 +192,81 @@ import { Result, ResultAsync } from 'neverthrow';
 
 const DEFAULT_TIMEOUT_MS = 5000;
 
-interface FirstValueFromResultOptions<D> {
-  timeout?: number;
-  defaultValue?: D;
+// ═══════════════════════════════════════════════════════════════════════════
+// Error Classes - enables instanceof narrowing
+// ═══════════════════════════════════════════════════════════════════════════
+
+export class QueryTimeoutError extends Error {
+  override readonly name = 'QueryTimeoutError';
+  constructor(readonly timeoutMs: number) {
+    super(`Query timed out after ${timeoutMs}ms`);
+  }
 }
 
-/**
- * Converts Observable<T> to Promise<Result<T, Error>> with timeout.
- *
- * @param observable - The Observable to convert
- * @param options.timeout - Timeout in ms (default: 5000)
- * @param options.defaultValue - Value to return if Observable completes without emitting
- *
- * @example
- * // Basic usage
- * const result = await firstValueFromResult(service.getActive());
- *
- * @example
- * // With custom timeout
- * const result = await firstValueFromResult(service.getActive(), { timeout: 10000 });
- *
- * @example
- * // With default value for empty Observable
- * const result = await firstValueFromResult(service.getActive(), { defaultValue: null });
- */
-export const firstValueFromResult = async <T, D = never>(
+export class QueryError extends Error {
+  override readonly name = 'QueryError';
+  constructor(readonly cause: unknown) {
+    super(cause instanceof Error ? cause.message : `${cause}`);
+  }
+}
+
+export type FirstValueFromResultError = QueryTimeoutError | QueryError;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Function Overloads
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function firstValueFromResult<T>(
+  observable: Observable<T>
+): Promise<Result<T, FirstValueFromResultError>>;
+
+export function firstValueFromResult<T>(
   observable: Observable<T>,
-  options: FirstValueFromResultOptions<D> = {}
-): Promise<Result<T | D, Error>> => {
+  options: { timeout: number }
+): Promise<Result<T, FirstValueFromResultError>>;
+
+export function firstValueFromResult<T, D>(
+  observable: Observable<T>,
+  options: { timeout?: number; defaultValue: D }
+): Promise<Result<T | D, FirstValueFromResultError>>;
+
+export async function firstValueFromResult<T, D = never>(
+  observable: Observable<T>,
+  options: { timeout?: number; defaultValue?: D } = {}
+): Promise<Result<T | D, FirstValueFromResultError>> {
   const timeoutMs = options.timeout ?? DEFAULT_TIMEOUT_MS;
-  // Use 'in' operator to detect explicit defaultValue (including undefined)
   const config = 'defaultValue' in options
     ? { defaultValue: options.defaultValue as D }
     : undefined;
 
   return ResultAsync.fromPromise(
     firstValueFrom(observable.pipe(timeout(timeoutMs)), config),
-    (e) => {
+    (e): FirstValueFromResultError => {
       if (e instanceof TimeoutError) {
-        return new Error(`Query timed out after ${timeoutMs}ms`);
+        return new QueryTimeoutError(timeoutMs);
       }
-      return e instanceof Error ? e : new Error(`${e}`);
+      return new QueryError(e);
     }
   );
-};
+}
+```
+
+**Usage with instanceof narrowing:**
+
+```typescript
+const result = await firstValueFromResult(service.getActive());
+
+return result.match(
+  (event) => c.json(event, 200),
+  (error) => {
+    if (error instanceof QueryTimeoutError) {
+      return c.json({ error: 'Request timed out' }, 504);
+    }
+    // error is QueryError here
+    console.error('Query failed:', error.cause);
+    return c.json({ error: error.message }, 500);
+  }
+);
 ```
 
 ## Summary

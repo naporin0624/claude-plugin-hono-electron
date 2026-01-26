@@ -158,28 +158,52 @@ import { Result, ResultAsync } from 'neverthrow';
 
 const DEFAULT_TIMEOUT_MS = 5000;
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Error Classes
+// ═══════════════════════════════════════════════════════════════════════════
+
+export class QueryTimeoutError extends Error {
+  override readonly name = 'QueryTimeoutError';
+  constructor(readonly timeoutMs: number) {
+    super(`Query timed out after ${timeoutMs}ms`);
+  }
+}
+
+export class QueryError extends Error {
+  override readonly name = 'QueryError';
+  constructor(readonly cause: unknown) {
+    super(cause instanceof Error ? cause.message : `${cause}`);
+  }
+}
+
+export type FirstValueFromResultError = QueryTimeoutError | QueryError;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Function Overloads
+// ═══════════════════════════════════════════════════════════════════════════
+
 // Overload: no options
 export function firstValueFromResult<T>(
   observable: Observable<T>
-): Promise<Result<T, Error>>;
+): Promise<Result<T, FirstValueFromResultError>>;
 
 // Overload: timeout only
 export function firstValueFromResult<T>(
   observable: Observable<T>,
   options: { timeout: number }
-): Promise<Result<T, Error>>;
+): Promise<Result<T, FirstValueFromResultError>>;
 
 // Overload: with defaultValue
 export function firstValueFromResult<T, D>(
   observable: Observable<T>,
   options: { timeout?: number; defaultValue: D }
-): Promise<Result<T | D, Error>>;
+): Promise<Result<T | D, FirstValueFromResultError>>;
 
 // Implementation
 export async function firstValueFromResult<T, D = never>(
   observable: Observable<T>,
   options: { timeout?: number; defaultValue?: D } = {}
-): Promise<Result<T | D, Error>> {
+): Promise<Result<T | D, FirstValueFromResultError>> {
   const timeoutMs = options.timeout ?? DEFAULT_TIMEOUT_MS;
   const config = 'defaultValue' in options
     ? { defaultValue: options.defaultValue as D }
@@ -187,11 +211,11 @@ export async function firstValueFromResult<T, D = never>(
 
   return ResultAsync.fromPromise(
     firstValueFrom(observable.pipe(timeout(timeoutMs)), config),
-    (e) => {
+    (e): FirstValueFromResultError => {
       if (e instanceof TimeoutError) {
-        return new Error(`Query timed out after ${timeoutMs}ms`);
+        return new QueryTimeoutError(timeoutMs);
       }
-      return e instanceof Error ? e : new Error(`${e}`);
+      return new QueryError(e);
     }
   );
 }
