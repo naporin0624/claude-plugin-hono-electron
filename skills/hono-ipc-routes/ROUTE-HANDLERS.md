@@ -155,32 +155,13 @@ export const events = { routes };
 // src/main/utils/observable.ts
 import { firstValueFrom, Observable, timeout, TimeoutError } from 'rxjs';
 import { Result, ResultAsync } from 'neverthrow';
+import {
+  QueryTimeoutError,
+  QueryError,
+  type FirstValueFromResultError,
+} from '@errors';
 
 const DEFAULT_TIMEOUT_MS = 5000;
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Error Classes
-// ═══════════════════════════════════════════════════════════════════════════
-
-export class QueryTimeoutError extends Error {
-  override readonly name = 'QueryTimeoutError';
-  constructor(readonly timeoutMs: number) {
-    super(`Query timed out after ${timeoutMs}ms`);
-  }
-}
-
-export class QueryError extends Error {
-  override readonly name = 'QueryError';
-  constructor(readonly cause: unknown) {
-    super(cause instanceof Error ? cause.message : `${cause}`);
-  }
-}
-
-export type FirstValueFromResultError = QueryTimeoutError | QueryError;
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Function Overloads
-// ═══════════════════════════════════════════════════════════════════════════
 
 // Overload: no options
 export function firstValueFromResult<T>(

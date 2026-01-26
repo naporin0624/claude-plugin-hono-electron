@@ -13,32 +13,13 @@ For queries that return `Observable<T>`, wrap `firstValueFrom` with `timeout` us
 ```typescript
 import { firstValueFrom, Observable, timeout, TimeoutError } from 'rxjs';
 import { ResultAsync, Result } from 'neverthrow';
+import {
+  QueryTimeoutError,
+  QueryError,
+  type FirstValueFromResultError,
+} from '@errors';
 
 const DEFAULT_TIMEOUT_MS = 5000;
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Error Classes
-// ═══════════════════════════════════════════════════════════════════════════
-
-export class QueryTimeoutError extends Error {
-  override readonly name = 'QueryTimeoutError';
-  constructor(readonly timeoutMs: number) {
-    super(`Query timed out after ${timeoutMs}ms`);
-  }
-}
-
-export class QueryError extends Error {
-  override readonly name = 'QueryError';
-  constructor(readonly cause: unknown) {
-    super(cause instanceof Error ? cause.message : `${cause}`);
-  }
-}
-
-export type FirstValueFromResultError = QueryTimeoutError | QueryError;
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Function Overloads
-// ═══════════════════════════════════════════════════════════════════════════
 
 // Overload: no options
 export function firstValueFromResult<T>(
@@ -183,19 +164,10 @@ const routes = new Hono<{ Variables: AppVariables }>()
   });
 ```
 
-## Complete Utility Implementation
+## Error Classes
 
 ```typescript
-// src/main/utils/observable.ts
-import { firstValueFrom, Observable, timeout, TimeoutError } from 'rxjs';
-import { Result, ResultAsync } from 'neverthrow';
-
-const DEFAULT_TIMEOUT_MS = 5000;
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Error Classes - enables instanceof narrowing
-// ═══════════════════════════════════════════════════════════════════════════
-
+// src/main/errors/index.ts
 export class QueryTimeoutError extends Error {
   override readonly name = 'QueryTimeoutError';
   constructor(readonly timeoutMs: number) {
@@ -211,49 +183,13 @@ export class QueryError extends Error {
 }
 
 export type FirstValueFromResultError = QueryTimeoutError | QueryError;
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Function Overloads
-// ═══════════════════════════════════════════════════════════════════════════
-
-export function firstValueFromResult<T>(
-  observable: Observable<T>
-): Promise<Result<T, FirstValueFromResultError>>;
-
-export function firstValueFromResult<T>(
-  observable: Observable<T>,
-  options: { timeout: number }
-): Promise<Result<T, FirstValueFromResultError>>;
-
-export function firstValueFromResult<T, D>(
-  observable: Observable<T>,
-  options: { timeout?: number; defaultValue: D }
-): Promise<Result<T | D, FirstValueFromResultError>>;
-
-export async function firstValueFromResult<T, D = never>(
-  observable: Observable<T>,
-  options: { timeout?: number; defaultValue?: D } = {}
-): Promise<Result<T | D, FirstValueFromResultError>> {
-  const timeoutMs = options.timeout ?? DEFAULT_TIMEOUT_MS;
-  const config = 'defaultValue' in options
-    ? { defaultValue: options.defaultValue as D }
-    : undefined;
-
-  return ResultAsync.fromPromise(
-    firstValueFrom(observable.pipe(timeout(timeoutMs)), config),
-    (e): FirstValueFromResultError => {
-      if (e instanceof TimeoutError) {
-        return new QueryTimeoutError(timeoutMs);
-      }
-      return new QueryError(e);
-    }
-  );
-}
 ```
 
-**Usage with instanceof narrowing:**
+## Usage with instanceof Narrowing
 
 ```typescript
+import { firstValueFromResult, QueryTimeoutError } from '@utils/observable';
+
 const result = await firstValueFromResult(service.getActive());
 
 return result.match(
