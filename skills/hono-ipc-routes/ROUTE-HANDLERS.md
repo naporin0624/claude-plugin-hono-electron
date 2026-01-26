@@ -153,24 +153,33 @@ export const events = { routes };
 
 ```typescript
 // src/main/utils/observable.ts
-import { firstValueFrom, Observable } from 'rxjs';
-import { ok, err, Result } from 'neverthrow';
+import { firstValueFrom, Observable, timeout, TimeoutError } from 'rxjs';
+import { Result, ResultAsync } from 'neverthrow';
+
+const DEFAULT_TIMEOUT_MS = 5000;
 
 /**
- * Converts Observable<T> to Promise<Result<T, Error>>.
+ * Converts Observable<T> to Promise<Result<T, Error>> with timeout.
  * Used in route handlers to get a single value from service queries.
+ * Prevents hanging when Observable never emits.
  */
 export const firstValueFromResult = async <T>(
-  observable: Observable<T>
+  observable: Observable<T>,
+  timeoutMs = DEFAULT_TIMEOUT_MS
 ): Promise<Result<T, Error>> => {
-  try {
-    const value = await firstValueFrom(observable);
-    return ok(value);
-  } catch (e) {
-    return err(e instanceof Error ? e : new Error(String(e)));
-  }
+  return ResultAsync.fromPromise(
+    firstValueFrom(observable.pipe(timeout(timeoutMs))),
+    (e) => {
+      if (e instanceof TimeoutError) {
+        return new Error(`Query timed out after ${timeoutMs}ms`);
+      }
+      return e instanceof Error ? e : new Error(String(e));
+    }
+  );
 };
 ```
+
+> **Note:** See [ERROR-HANDLING.md](./ERROR-HANDLING.md) for complete error handling patterns.
 
 ## Dependency Injection Pattern
 
