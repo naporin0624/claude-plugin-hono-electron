@@ -33,8 +33,11 @@ export const firstValueFromResult = async <T, D = never>(
   observable: Observable<T>,
   options: FirstValueFromResultOptions<D> = {}
 ): Promise<Result<T | D, Error>> => {
-  const { timeout: timeoutMs = DEFAULT_TIMEOUT_MS, defaultValue } = options;
-  const config = defaultValue !== undefined ? { defaultValue } : undefined;
+  const timeoutMs = options.timeout ?? DEFAULT_TIMEOUT_MS;
+  // Use 'in' operator to detect explicit defaultValue (including undefined)
+  const config = 'defaultValue' in options
+    ? { defaultValue: options.defaultValue as D }
+    : undefined;
 
   return ResultAsync.fromPromise(
     firstValueFrom(observable.pipe(timeout(timeoutMs)), config),
@@ -189,8 +192,11 @@ export const firstValueFromResult = async <T, D = never>(
   observable: Observable<T>,
   options: FirstValueFromResultOptions<D> = {}
 ): Promise<Result<T | D, Error>> => {
-  const { timeout: timeoutMs = DEFAULT_TIMEOUT_MS, defaultValue } = options;
-  const config = defaultValue !== undefined ? { defaultValue } : undefined;
+  const timeoutMs = options.timeout ?? DEFAULT_TIMEOUT_MS;
+  // Use 'in' operator to detect explicit defaultValue (including undefined)
+  const config = 'defaultValue' in options
+    ? { defaultValue: options.defaultValue as D }
+    : undefined;
 
   return ResultAsync.fromPromise(
     firstValueFrom(observable.pipe(timeout(timeoutMs)), config),
