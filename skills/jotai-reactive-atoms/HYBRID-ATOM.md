@@ -151,21 +151,25 @@ streamNotificationsAtom.onMount = (set) => {
  *
  * Logic:
  * 1. Check if stream atom has data
- * 2. If undefined (not mounted), use HTTP fallback
- * 3. If defined, use stream data
+ * 2. If defined, use stream data (synchronous - no Suspense)
+ * 3. If undefined (not mounted), use HTTP fallback (triggers Suspense)
+ *
+ * IMPORTANT: Do NOT use async keyword here!
+ * async functions always return Promise, causing Suspense to trigger
+ * even when returning synchronous values.
  *
  * This is the atom that components should use.
  */
-export const notificationsAtom = atom(async (get) => {
+export const notificationsAtom = atom((get) => {
   const stream = get(streamNotificationsAtom);
 
-  // Stream not ready - use HTTP fallback
-  if (stream === undefined) {
-    return get(singleFetchNotificationsAtom);
+  // Stream ready - use stream data (synchronous, no Suspense)
+  if (stream !== undefined) {
+    return stream.notifications;
   }
 
-  // Stream ready - use stream data
-  return stream.notifications;
+  // Stream not ready - use HTTP fallback (triggers Suspense only on initial load)
+  return get(singleFetchNotificationsAtom);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

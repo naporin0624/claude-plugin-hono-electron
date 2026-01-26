@@ -125,18 +125,17 @@ preInviteeSnapshotAtom.onMount = (set) => {
  * Write: Manual refresh capability
  */
 export const preInviteesAtom = atom(
-  // Read function
-  async (get) => {
+  // Read function - NO async keyword to avoid unnecessary Suspense
+  (get) => {
     const snapshotContainer = get(preInviteeSnapshotAtom);
-    const preInvitees = await get(singleFetchPreInviteesAtom);
 
-    // Fallback to HTTP if stream not ready
-    if (snapshotContainer === undefined) {
-      return preInvitees;
+    // Use stream data if available (synchronous - no Suspense)
+    if (snapshotContainer !== undefined) {
+      return snapshotContainer.value;
     }
 
-    // Use stream data if available
-    return snapshotContainer.value;
+    // Fallback to HTTP if stream not ready (triggers Suspense only on initial load)
+    return get(singleFetchPreInviteesAtom);
   },
 
   // Write function (for manual refresh)
