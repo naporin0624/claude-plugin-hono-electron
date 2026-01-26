@@ -18,6 +18,7 @@ This skill documents the Jotai atom patterns for Electron applications with IPC-
 | Stream Atom | IPC subscriptions | onMount with subscription |
 | Single Fetch Atom | Initial data | HTTP-only async atom |
 | Event Subscription | IPC optimization | Shared IPC listeners |
+| Write Atom | Mutations (CRUD) | Create, Update, Delete operations |
 
 ## Quick Start
 
@@ -105,6 +106,118 @@ export const UsersPage = () => (
     <UserList />
   </Suspense>
 );
+```
+
+### 4. Create Write Atoms (Mutations)
+
+```typescript
+// src/renderer/src/views/atoms/users.atom.ts
+import { atom } from 'jotai';
+
+// Create user - ID excluded (server generates)
+export const createUserAtom = atom(
+  null,  // No read value
+  async (_get, set, data: { displayName: string; bio: string | null }) => {
+    const res = await client.users.$post({ json: data });
+
+    switch (res.status) {
+      case 201: {
+        set(singleFetchUsersAtom);  // Refresh read atom
+        return res.json();
+      }
+      default: {
+        const error = await res.json();
+        throw new Error(error.error);
+      }
+    }
+  }
+);
+
+// Update user
+export const updateUserAtom = atom(
+  null,
+  async (_get, set, { id, data }: { id: string; data: { displayName?: string } }) => {
+    const res = await client.users[':id'].$put({
+      param: { id },
+      json: data,
+    });
+
+    switch (res.status) {
+      case 200: {
+        set(singleFetchUsersAtom);
+        return res.json();
+      }
+      case 404:
+        throw new Error('User not found');
+      default:
+        throw new Error('Failed to update user');
+    }
+  }
+);
+
+// Delete user
+export const deleteUserAtom = atom(
+  null,
+  async (_get, set, id: string) => {
+    const res = await client.users[':id'].$delete({ param: { id } });
+
+    switch (res.status) {
+      case 200: {
+        set(singleFetchUsersAtom);
+        return res.json();
+      }
+      case 404:
+        throw new Error('User not found');
+      default:
+        throw new Error('Failed to delete user');
+    }
+  }
+);
+```
+
+### 5. Use Write Atoms in Components
+
+```tsx
+import { useAtom, useAtomValue } from 'jotai';
+import { usersAtom, createUserAtom, deleteUserAtom } from '../atoms/users.atom';
+
+const UserManager = () => {
+  const users = useAtomValue(usersAtom);
+  const [, createUser] = useAtom(createUserAtom);
+  const [, deleteUser] = useAtom(deleteUserAtom);
+
+  const handleCreate = async () => {
+    try {
+      await createUser({ displayName: 'New User', bio: null });
+      toast.success('User created!');
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteUser(id);
+      toast.success('User deleted!');
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+
+  return (
+    <div>
+      <button onClick={handleCreate}>Create User</button>
+      <ul>
+        {users.map(user => (
+          <li key={user.id}>
+            {user.displayName}
+            <button onClick={() => handleDelete(user.id)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
 ```
 
 ## Architecture Diagram
@@ -263,6 +376,8 @@ export const worldAtom = atomFamily((id: string) =>
 
 ## Additional Resources
 
-- [HYBRID-ATOM.md](HYBRID-ATOM.md) - Detailed hybrid pattern implementation
+- [HYBRID-ATOM.md](HYBRID-ATOM.md) - Detailed hybrid pattern implementation (read operations)
+- [WRITE-ATOM.md](WRITE-ATOM.md) - Write atom patterns (create, update, delete)
 - [EVENT-SUBSCRIPTION.md](EVENT-SUBSCRIPTION.md) - IPC subscription optimization
-- [examples/hybrid-atom.ts](examples/hybrid-atom.ts) - Complete implementation
+- [examples/hybrid-atom.ts](examples/hybrid-atom.ts) - Complete read atom implementation
+- [examples/write-atom.ts](examples/write-atom.ts) - Complete write atom implementation
