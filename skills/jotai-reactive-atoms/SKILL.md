@@ -68,12 +68,15 @@ streamUsersAtom.onMount = (set) => {
 };
 
 // Step 3: Hybrid selector (exported)
-export const usersAtom = atom(async (get) => {
+// IMPORTANT: Do NOT use async - it causes Suspense to trigger on every read
+export const usersAtom = atom((get) => {
   const stream = get(streamUsersAtom);
-  if (stream === undefined) {
-    return get(singleFetchUsersAtom);  // Fallback to HTTP
+  // Check stream first (synchronous path - no Suspense)
+  if (stream !== undefined) {
+    return stream.value;  // Use stream data
   }
-  return stream.value;  // Use stream data
+  // Fallback to HTTP (triggers Suspense only on initial load)
+  return get(singleFetchUsersAtom);
 });
 ```
 
