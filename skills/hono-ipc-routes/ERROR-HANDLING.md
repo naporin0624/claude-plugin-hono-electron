@@ -20,6 +20,15 @@ export class QueryError extends Error {
   }
 }
 
+// Application-specific errors (define in your service layer)
+// QueryError.cause will contain these for instanceof narrowing
+export class NotFoundError extends Error {
+  override readonly name = 'NotFoundError';
+}
+export class UnauthorizedError extends Error {
+  override readonly name = 'UnauthorizedError';
+}
+
 export type FirstValueFromResultError = QueryTimeoutError | QueryError;
 ```
 
@@ -79,12 +88,21 @@ result.match(
     if (error instanceof QueryTimeoutError) {
       return c.json({ error: 'Request timed out' }, 504);
     }
-    // error is QueryError
-    console.error('Query failed:', error.cause);
+    // error is QueryError - narrow by cause
+    const { cause } = error;
+    if (cause instanceof NotFoundError) {
+      return c.json({ error: 'Not found' }, 404);
+    }
+    if (cause instanceof UnauthorizedError) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+    console.error('Query failed:', cause);
     return c.json({ error: error.message }, 500);
   }
 );
 ```
+
+> **Note:** `QueryError` wraps errors thrown in Observable streams. Define application-specific error classes (e.g., `NotFoundError`, `UnauthorizedError`) in your service layer and throw them from Observable operators. Access via `error.cause` for fine-grained handling.
 
 ## Patterns Summary
 
