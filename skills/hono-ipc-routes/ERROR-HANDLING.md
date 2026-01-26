@@ -11,22 +11,39 @@ In Electron's main process, **unhandled exceptions crash the entire application*
 For queries that return `Observable<T>`, wrap `firstValueFrom` with `timeout` using `ResultAsync.fromPromise`:
 
 ```typescript
-import { firstValueFrom, Observable, timeout } from 'rxjs';
-import { ResultAsync, Result, ok, err } from 'neverthrow';
+import { firstValueFrom, Observable, timeout, TimeoutError } from 'rxjs';
+import { ResultAsync, Result } from 'neverthrow';
 
-const QUERY_TIMEOUT_MS = 5000;
+const DEFAULT_TIMEOUT_MS = 5000;
+
+interface FirstValueFromResultOptions<D> {
+  timeout?: number;
+  defaultValue?: D;
+}
 
 /**
  * Converts Observable<T> to Promise<Result<T, Error>> with timeout.
  * Prevents hanging when Observable never emits.
+ *
+ * @param observable - The Observable to convert
+ * @param options.timeout - Timeout in ms (default: 5000)
+ * @param options.defaultValue - Value to return if Observable completes without emitting
  */
-export const firstValueFromResult = async <T>(
+export const firstValueFromResult = async <T, D = never>(
   observable: Observable<T>,
-  timeoutMs = QUERY_TIMEOUT_MS
-): Promise<Result<T, Error>> => {
+  options: FirstValueFromResultOptions<D> = {}
+): Promise<Result<T | D, Error>> => {
+  const { timeout: timeoutMs = DEFAULT_TIMEOUT_MS, defaultValue } = options;
+  const config = defaultValue !== undefined ? { defaultValue } : undefined;
+
   return ResultAsync.fromPromise(
-    firstValueFrom(observable.pipe(timeout(timeoutMs))),
-    (e) => (e instanceof Error ? e : new Error(String(e)))
+    firstValueFrom(observable.pipe(timeout(timeoutMs)), config),
+    (e) => {
+      if (e instanceof TimeoutError) {
+        return new Error(`Query timed out after ${timeoutMs}ms`);
+      }
+      return e instanceof Error ? e : new Error(`${e}`);
+    }
   );
 };
 ```
@@ -140,35 +157,48 @@ const routes = new Hono<{ Variables: AppVariables }>()
 ```typescript
 // src/main/utils/observable.ts
 import { firstValueFrom, Observable, timeout, TimeoutError } from 'rxjs';
-import { Result, ok, err, ResultAsync } from 'neverthrow';
+import { Result, ResultAsync } from 'neverthrow';
 
 const DEFAULT_TIMEOUT_MS = 5000;
+
+interface FirstValueFromResultOptions<D> {
+  timeout?: number;
+  defaultValue?: D;
+}
 
 /**
  * Converts Observable<T> to Promise<Result<T, Error>> with timeout.
  *
  * @param observable - The Observable to convert
- * @param timeoutMs - Timeout in milliseconds (default: 5000)
- * @returns Promise<Result<T, Error>>
+ * @param options.timeout - Timeout in ms (default: 5000)
+ * @param options.defaultValue - Value to return if Observable completes without emitting
  *
  * @example
+ * // Basic usage
  * const result = await firstValueFromResult(service.getActive());
- * return result.match(
- *   (data) => c.json(data, 200),
- *   (error) => c.json({ error: error.message }, 500)
- * );
+ *
+ * @example
+ * // With custom timeout
+ * const result = await firstValueFromResult(service.getActive(), { timeout: 10000 });
+ *
+ * @example
+ * // With default value for empty Observable
+ * const result = await firstValueFromResult(service.getActive(), { defaultValue: null });
  */
-export const firstValueFromResult = async <T>(
+export const firstValueFromResult = async <T, D = never>(
   observable: Observable<T>,
-  timeoutMs = DEFAULT_TIMEOUT_MS
-): Promise<Result<T, Error>> => {
+  options: FirstValueFromResultOptions<D> = {}
+): Promise<Result<T | D, Error>> => {
+  const { timeout: timeoutMs = DEFAULT_TIMEOUT_MS, defaultValue } = options;
+  const config = defaultValue !== undefined ? { defaultValue } : undefined;
+
   return ResultAsync.fromPromise(
-    firstValueFrom(observable.pipe(timeout(timeoutMs))),
+    firstValueFrom(observable.pipe(timeout(timeoutMs)), config),
     (e) => {
       if (e instanceof TimeoutError) {
         return new Error(`Query timed out after ${timeoutMs}ms`);
       }
-      return e instanceof Error ? e : new Error(String(e));
+      return e instanceof Error ? e : new Error(`${e}`);
     }
   );
 };

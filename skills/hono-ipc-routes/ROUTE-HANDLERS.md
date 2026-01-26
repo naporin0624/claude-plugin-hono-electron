@@ -158,22 +158,34 @@ import { Result, ResultAsync } from 'neverthrow';
 
 const DEFAULT_TIMEOUT_MS = 5000;
 
+interface FirstValueFromResultOptions<D> {
+  timeout?: number;
+  defaultValue?: D;
+}
+
 /**
  * Converts Observable<T> to Promise<Result<T, Error>> with timeout.
  * Used in route handlers to get a single value from service queries.
  * Prevents hanging when Observable never emits.
+ *
+ * @param observable - The Observable to convert
+ * @param options.timeout - Timeout in ms (default: 5000)
+ * @param options.defaultValue - Value to return if Observable completes without emitting
  */
-export const firstValueFromResult = async <T>(
+export const firstValueFromResult = async <T, D = never>(
   observable: Observable<T>,
-  timeoutMs = DEFAULT_TIMEOUT_MS
-): Promise<Result<T, Error>> => {
+  options: FirstValueFromResultOptions<D> = {}
+): Promise<Result<T | D, Error>> => {
+  const { timeout: timeoutMs = DEFAULT_TIMEOUT_MS, defaultValue } = options;
+  const config = defaultValue !== undefined ? { defaultValue } : undefined;
+
   return ResultAsync.fromPromise(
-    firstValueFrom(observable.pipe(timeout(timeoutMs))),
+    firstValueFrom(observable.pipe(timeout(timeoutMs)), config),
     (e) => {
       if (e instanceof TimeoutError) {
         return new Error(`Query timed out after ${timeoutMs}ms`);
       }
-      return e instanceof Error ? e : new Error(String(e));
+      return e instanceof Error ? e : new Error(`${e}`);
     }
   );
 };
