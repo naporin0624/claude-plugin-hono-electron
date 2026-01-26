@@ -321,249 +321,80 @@ TIME: t2 (IPC Push - Parallel Path)
 ## Usage in Components
 
 ```tsx
-import { Suspense } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
-import {
-  usersAtom,
-  createUserAtom,
-  updateUserAtom,
-  deleteUserAtom,
-} from '../atoms/users.atom';
+import { usersAtom, createUserAtom, deleteUserAtom } from '../atoms/users.atom';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Create User Form
-// ═══════════════════════════════════════════════════════════════════════════
-
-const CreateUserForm = () => {
-  const [, createUser] = useAtom(createUserAtom);
-  const [displayName, setDisplayName] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const newUser = await createUser({
-        displayName,
-        bio: null,
-        note: null,
-      });
-      toast.success(`User ${newUser.displayName} created!`);
-      setDisplayName('');
-    } catch (error) {
-      if (error instanceof ValidationError) {
-        toast.error(`Validation failed: ${error.message}`);
-      } else if (error instanceof ConflictError) {
-        toast.error('User already exists');
-      } else {
-        toast.error('Failed to create user');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <input
-        value={displayName}
-        onChange={(e) => setDisplayName(e.target.value)}
-        placeholder="Display name"
-        disabled={isLoading}
-      />
-      <button type="submit" disabled={isLoading}>
-        {isLoading ? 'Creating...' : 'Create User'}
-      </button>
-    </form>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
-// User List with Update/Delete
-// ═══════════════════════════════════════════════════════════════════════════
-
-const UserList = () => {
+const UserManager = () => {
   const users = useAtomValue(usersAtom);
-  const [, updateUser] = useAtom(updateUserAtom);
+  const [, createUser] = useAtom(createUserAtom);
   const [, deleteUser] = useAtom(deleteUserAtom);
 
-  const handleUpdate = async (id: string, newName: string) => {
+  const handleCreate = async () => {
     try {
-      await updateUser({ id, data: { displayName: newName } });
-      toast.success('User updated!');
+      await createUser({ displayName: 'New User', bio: null, note: null });
+      toast.success('User created!');
     } catch (error) {
-      if (error instanceof NotFoundError) {
-        toast.error('User not found');
-      } else {
-        toast.error('Failed to update user');
-      }
+      toast.error(error instanceof Error ? error.message : 'Failed');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure?')) return;
-
     try {
       await deleteUser(id);
       toast.success('User deleted!');
     } catch (error) {
-      if (error instanceof NotFoundError) {
-        toast.error('User not found');
-      } else {
-        toast.error('Failed to delete user');
-      }
+      toast.error(error instanceof Error ? error.message : 'Failed');
     }
   };
 
   return (
-    <ul>
-      {users.map((user) => (
-        <li key={user.id}>
-          <span>{user.displayName}</span>
-          <button onClick={() => handleUpdate(user.id, 'New Name')}>
-            Edit
-          </button>
-          <button onClick={() => handleDelete(user.id)}>
-            Delete
-          </button>
-        </li>
-      ))}
-    </ul>
+    <div>
+      <button onClick={handleCreate}>Create User</button>
+      <ul>
+        {users.map((user) => (
+          <li key={user.id}>
+            {user.displayName}
+            <button onClick={() => handleDelete(user.id)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 };
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Page Component with Suspense
-// ═══════════════════════════════════════════════════════════════════════════
-
-export const UsersPage = () => (
-  <div>
-    <h1>Users</h1>
-    <CreateUserForm />
-    <Suspense fallback={<Loading />}>
-      <UserList />
-    </Suspense>
-  </div>
-);
 ```
 
 ## Testing Write Atoms
 
 ```typescript
 import { createStore } from 'jotai';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  createUserAtom,
-  updateUserAtom,
-  deleteUserAtom,
-  singleFetchUsersAtom,
-} from './users.atom';
 
-describe('Write Atoms', () => {
-  let store: ReturnType<typeof createStore>;
+describe('createUserAtom', () => {
+  it('should create user and refresh read atom on 201', async () => {
+    const store = createStore();
+    mockClient.users.$post.mockResolvedValue({
+      status: 201,
+      json: () => Promise.resolve({ id: '1', displayName: 'Alice' }),
+    });
 
-  beforeEach(() => {
-    store = createStore();
-    vi.clearAllMocks();
+    const result = await store.set(createUserAtom, {
+      displayName: 'Alice',
+      bio: null,
+      note: null,
+    });
+
+    expect(result).toEqual({ id: '1', displayName: 'Alice' });
   });
 
-  describe('createUserAtom', () => {
-    it('should create user and refresh read atom on 201', async () => {
-      mockClient.users.$post.mockResolvedValue({
-        ok: true,
-        status: 201,
-        json: () => Promise.resolve({ id: '1', displayName: 'Alice' }),
-      });
-
-      const result = await store.set(createUserAtom, {
-        displayName: 'Alice',
-        bio: null,
-        note: null,
-      });
-
-      expect(result).toEqual({ id: '1', displayName: 'Alice' });
-      // Verify refresh was triggered (implementation depends on your mock setup)
+  it('should throw ValidationError on 400', async () => {
+    const store = createStore();
+    mockClient.users.$post.mockResolvedValue({
+      status: 400,
+      json: () => Promise.resolve({ error: 'Invalid name' }),
     });
 
-    it('should throw ValidationError on 400', async () => {
-      mockClient.users.$post.mockResolvedValue({
-        ok: false,
-        status: 400,
-        json: () => Promise.resolve({ error: 'Invalid name' }),
-      });
-
-      await expect(
-        store.set(createUserAtom, { displayName: '', bio: null, note: null })
-      ).rejects.toThrow(ValidationError);
-    });
-
-    it('should throw ConflictError on 409', async () => {
-      mockClient.users.$post.mockResolvedValue({
-        ok: false,
-        status: 409,
-        json: () => Promise.resolve({ error: 'Already exists' }),
-      });
-
-      await expect(
-        store.set(createUserAtom, { displayName: 'Alice', bio: null, note: null })
-      ).rejects.toThrow(ConflictError);
-    });
-  });
-
-  describe('updateUserAtom', () => {
-    it('should update user and refresh read atom on 200', async () => {
-      mockClient.users[':id'].$put.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ id: '1', displayName: 'Updated' }),
-      });
-
-      const result = await store.set(updateUserAtom, {
-        id: '1',
-        data: { displayName: 'Updated' },
-      });
-
-      expect(result).toEqual({ id: '1', displayName: 'Updated' });
-    });
-
-    it('should throw NotFoundError on 404', async () => {
-      mockClient.users[':id'].$put.mockResolvedValue({
-        ok: false,
-        status: 404,
-        json: () => Promise.resolve({ error: 'Not found' }),
-      });
-
-      await expect(
-        store.set(updateUserAtom, { id: 'invalid', data: { displayName: 'X' } })
-      ).rejects.toThrow(NotFoundError);
-    });
-  });
-
-  describe('deleteUserAtom', () => {
-    it('should delete user and refresh read atom on 200', async () => {
-      mockClient.users[':id'].$delete.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ success: true }),
-      });
-
-      const result = await store.set(deleteUserAtom, '1');
-
-      expect(result).toEqual({ success: true });
-    });
-
-    it('should throw NotFoundError on 404', async () => {
-      mockClient.users[':id'].$delete.mockResolvedValue({
-        ok: false,
-        status: 404,
-        json: () => Promise.resolve({ error: 'Not found' }),
-      });
-
-      await expect(store.set(deleteUserAtom, 'invalid')).rejects.toThrow(
-        NotFoundError
-      );
-    });
+    await expect(
+      store.set(createUserAtom, { displayName: '', bio: null, note: null })
+    ).rejects.toThrow(ValidationError);
   });
 });
 ```
@@ -584,159 +415,29 @@ describe('Write Atoms', () => {
 - Use generic error messages
 - Ignore 4xx client errors (they indicate user/data issues)
 
-## Advanced: Optimistic Updates with useOptimisticValue
+## Advanced: Optimistic Updates
 
-React's built-in `useOptimistic` hook has issues with external state (like Jotai atoms).
-Use `useOptimisticValue` instead - it uses timestamp comparison to always show the latest value.
+For optimistic updates with Jotai atoms, use the `useOptimisticValue` hook.
 
-### useOptimisticValue Hook
+React's built-in `useOptimistic` has issues with external state (Jotai atoms).
+`useOptimisticValue` uses timestamp comparison to always show the latest value,
+with automatic rollback on error.
 
-```typescript
-// src/renderer/src/hooks/use-optimistic-value.ts
-import { useCallback, useMemo, useState, useTransition } from 'react';
+See [examples/use-optimistic-value.ts](examples/use-optimistic-value.ts) for the full implementation.
 
-type TimestampedValue<T> = {
-  ts: number;
-  value: T;
-};
-
-type UseOptimisticValueReturn<T> = {
-  value: T;
-  isPending: boolean;
-  updateOptimistically: (newValue: T) => void;
-};
-
-/**
- * Timestamp-based optimistic update hook for external state.
- *
- * React's useOptimistic relies on internal state, causing issues
- * with external state (Jotai, etc.). This hook uses timestamp
- * comparison to always display the latest value.
- *
- * @template T - Type of the managed value
- * @param realValue - Actual value from data source
- * @param onUpdate - Async function to perform the actual update
- * @returns Object containing current value, pending state, and update function
- */
-export const useOptimisticValue = <T = unknown>(
-  realValue: T,
-  onUpdate: (value: T) => Promise<void> | void
-): UseOptimisticValueReturn<T> => {
-  // Convert realValue to timestamped value
-  const real = useMemo<TimestampedValue<T>>(
-    () => ({ ts: Date.now(), value: realValue }),
-    [realValue]
-  );
-
-  // Manage optimistic value with timestamp
-  const [optimistic, setOptimistic] = useState<TimestampedValue<T>>(real);
-
-  // Compare timestamps to select the latest value
-  const value = real.ts > optimistic.ts ? real.value : optimistic.value;
-
-  // Manage pending state with React Transition
-  const [isPending, startTransition] = useTransition();
-
-  // Update optimistically and execute actual update
-  const updateOptimistically = useCallback(
-    (newValue: T) => {
-      startTransition(() => {
-        setOptimistic({ ts: Date.now(), value: newValue });
-        void onUpdate(newValue);
-      });
-    },
-    [onUpdate]
-  );
-
-  return { value, isPending, updateOptimistically };
-};
-```
-
-### Usage with Write Atoms
+### Quick Example
 
 ```tsx
-import { useAtom, useAtomValue } from 'jotai';
-import { useOptimisticValue } from '@hooks/use-optimistic-value';
-import { usersAtom, updateUserAtom } from '../atoms/users.atom';
+const { value, isPending, updateOptimistically } = useOptimisticValue(
+  user.displayName,
+  async (newName) => {
+    await updateUser({ id: user.id, data: { displayName: newName } });
+  }
+);
 
-const UserCard = ({ userId }: { userId: string }) => {
-  const users = useAtomValue(usersAtom);
-  const [, updateUser] = useAtom(updateUserAtom);
-
-  const user = users.find((u) => u.id === userId);
-  if (!user) return null;
-
-  // Use optimistic value for the display name
-  const {
-    value: displayName,
-    isPending,
-    updateOptimistically,
-  } = useOptimisticValue(user.displayName, async (newName) => {
-    await updateUser({ id: userId, data: { displayName: newName } });
-  });
-
-  const handleRename = () => {
-    const newName = prompt('Enter new name:', displayName);
-    if (newName && newName !== displayName) {
-      updateOptimistically(newName);  // Immediate UI update
-    }
-  };
-
-  return (
-    <div className={isPending ? 'opacity-50' : ''}>
-      <span>{displayName}</span>
-      <button onClick={handleRename} disabled={isPending}>
-        {isPending ? 'Saving...' : 'Rename'}
-      </button>
-    </div>
-  );
-};
-```
-
-### How It Works
-
-```
-TIME: t0 (User clicks "Rename")
-═══════════════════════════════════════════════════════════
-
-  updateOptimistically("New Name")
-       │
-       ├── setOptimistic({ ts: 1000, value: "New Name" })  // Immediate
-       │
-       └── startTransition(() => updateUser(...))          // Background
-       │
-       ▼
-  UI shows "New Name" immediately ✓ (optimistic.ts > real.ts)
-
-
-TIME: t1 (Server responds)
-═══════════════════════════════════════════════════════════
-
-  Server returns success
-       │
-       ▼
-  usersAtom updates (via IPC or refresh)
-       │
-       ▼
-  real = { ts: 2000, value: "New Name" }  // real.ts > optimistic.ts
-       │
-       ▼
-  UI continues showing "New Name" ✓ (from real value now)
-
-
-TIME: t2 (Error case - server rejects)
-═══════════════════════════════════════════════════════════
-
-  Server returns error
-       │
-       ▼
-  usersAtom keeps old value
-       │
-       ▼
-  real = { ts: 2000, value: "Old Name" }  // real.ts > optimistic.ts
-       │
-       ▼
-  UI automatically reverts to "Old Name" ✓ (auto-rollback)
+// value: shows optimistic update immediately
+// isPending: true while server request is in flight
+// On error: automatically reverts to real value
 ```
 
 ## Related Documentation
