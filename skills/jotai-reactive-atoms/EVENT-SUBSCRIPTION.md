@@ -291,8 +291,6 @@ streamUsersAtom.onMount = (set) => {
     }
   }, 300);
 
-  handleUpdate();  // Initial fetch
-
   // Subscribe returns unsubscribe function
   // Jotai will call it automatically on unmount
   return usersSource.subscribe(handleUpdate);
