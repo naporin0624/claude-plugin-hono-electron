@@ -84,11 +84,14 @@ const res = await client.users[':id'].$delete({
 ```typescript
 const res = await client.users.$get();
 
-// Check status
-if (res.ok) {
-  const data = await res.json();
-} else {
-  console.error('Request failed:', res.status);
+// Check status using switch
+switch (res.status) {
+  case 200: {
+    const data = await res.json();
+    break;
+  }
+  default:
+    console.error('Request failed:', res.status);
 }
 
 // Access status code

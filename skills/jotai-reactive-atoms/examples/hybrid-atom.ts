@@ -42,12 +42,15 @@ interface PreInvitee {
 const fetchPreInvitees = async (): Promise<PreInvitee[]> => {
   const res = await client.preInvitees.$get();
 
-  if (res.status === 401) {
-    throw new UnauthorizedError();
-  }
-
-  if (res.status === 500) {
-    throw new UnknownError();
+  switch (res.status) {
+    case 200:
+      break;
+    case 401:
+      throw new UnauthorizedError();
+    case 500:
+      throw new UnknownError();
+    default:
+      throw new Error(`Unexpected status: ${res.status}`);
   }
 
   const data = await res.json();
