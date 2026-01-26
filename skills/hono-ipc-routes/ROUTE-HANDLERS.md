@@ -158,26 +158,29 @@ import { Result, ResultAsync } from 'neverthrow';
 
 const DEFAULT_TIMEOUT_MS = 5000;
 
-interface FirstValueFromResultOptions<D> {
-  timeout?: number;
-  defaultValue?: D;
-}
+// Overload: no options
+export function firstValueFromResult<T>(
+  observable: Observable<T>
+): Promise<Result<T, Error>>;
 
-/**
- * Converts Observable<T> to Promise<Result<T, Error>> with timeout.
- * Used in route handlers to get a single value from service queries.
- * Prevents hanging when Observable never emits.
- *
- * @param observable - The Observable to convert
- * @param options.timeout - Timeout in ms (default: 5000)
- * @param options.defaultValue - Value to return if Observable completes without emitting
- */
-export const firstValueFromResult = async <T, D = never>(
+// Overload: timeout only
+export function firstValueFromResult<T>(
   observable: Observable<T>,
-  options: FirstValueFromResultOptions<D> = {}
-): Promise<Result<T | D, Error>> => {
+  options: { timeout: number }
+): Promise<Result<T, Error>>;
+
+// Overload: with defaultValue
+export function firstValueFromResult<T, D>(
+  observable: Observable<T>,
+  options: { timeout?: number; defaultValue: D }
+): Promise<Result<T | D, Error>>;
+
+// Implementation
+export async function firstValueFromResult<T, D = never>(
+  observable: Observable<T>,
+  options: { timeout?: number; defaultValue?: D } = {}
+): Promise<Result<T | D, Error>> {
   const timeoutMs = options.timeout ?? DEFAULT_TIMEOUT_MS;
-  // Use 'in' operator to detect explicit defaultValue (including undefined)
   const config = 'defaultValue' in options
     ? { defaultValue: options.defaultValue as D }
     : undefined;
@@ -191,7 +194,7 @@ export const firstValueFromResult = async <T, D = never>(
       return e instanceof Error ? e : new Error(`${e}`);
     }
   );
-};
+}
 ```
 
 > **Note:** See [ERROR-HANDLING.md](./ERROR-HANDLING.md) for complete error handling patterns.
