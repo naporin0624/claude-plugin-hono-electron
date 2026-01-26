@@ -86,15 +86,14 @@ export const getUser = async (id: string) => {
     param: { id },  // TypeScript enforces 'id' param
   });
 
-  if (res.status === 404) {
-    return null;  // User not found
+  switch (res.status) {
+    case 200:
+      return res.json();
+    case 404:
+      return null;  // User not found
+    default:
+      throw new Error('Failed to fetch user');
   }
-
-  if (!res.ok) {
-    throw new Error('Failed to fetch user');
-  }
-
-  return res.json();
 };
 
 /**
@@ -120,20 +119,18 @@ export const createUser = async (data: {
     json: data,  // TypeScript validates against schema
   });
 
-  if (res.status === 400) {
-    const error = await res.json();
-    throw new ValidationError(error.error);
+  switch (res.status) {
+    case 201:
+      return res.json();
+    case 400: {
+      const error = await res.json();
+      throw new ValidationError(error.error);
+    }
+    case 409:
+      throw new ConflictError('User already exists');
+    default:
+      throw new Error('Failed to create user');
   }
-
-  if (res.status === 409) {
-    throw new ConflictError('User already exists');
-  }
-
-  if (res.status !== 201) {
-    throw new Error('Failed to create user');
-  }
-
-  return res.json();
 };
 
 /**
@@ -149,15 +146,14 @@ export const updateUser = async (id: string, data: {
     json: data,
   });
 
-  if (res.status === 404) {
-    throw new NotFoundError('User not found');
+  switch (res.status) {
+    case 200:
+      return res.json();
+    case 404:
+      throw new NotFoundError('User not found');
+    default:
+      throw new Error('Failed to update user');
   }
-
-  if (!res.ok) {
-    throw new Error('Failed to update user');
-  }
-
-  return res.json();
 };
 
 /**
@@ -168,11 +164,12 @@ export const deleteUser = async (id: string) => {
     param: { id },
   });
 
-  if (!res.ok) {
-    throw new Error('Failed to delete user');
+  switch (res.status) {
+    case 200:
+      return res.json();
+    default:
+      throw new Error('Failed to delete user');
   }
-
-  return res.json();
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -189,15 +186,14 @@ import { atomWithRefresh } from 'jotai/utils';
 export const usersAtom = atomWithRefresh(async () => {
   const res = await client.users.$get();
 
-  if (res.status === 401) {
-    throw new UnauthorizedError('Please log in');
+  switch (res.status) {
+    case 200:
+      return res.json();
+    case 401:
+      throw new UnauthorizedError('Please log in');
+    default:
+      throw new Error('Failed to fetch users');
   }
-
-  if (!res.ok) {
-    throw new Error('Failed to fetch users');
-  }
-
-  return res.json();
 });
 
 /**
@@ -209,15 +205,17 @@ export const createUserAtom = atom(
   async (_get, set, data: { id: string; displayName: string }) => {
     const res = await client.users.$post({ json: data });
 
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error);
+    switch (res.status) {
+      case 201: {
+        // Refresh users list after creation
+        set(usersAtom);
+        return res.json();
+      }
+      default: {
+        const error = await res.json();
+        throw new Error(error.error);
+      }
     }
-
-    // Refresh users list after creation
-    set(usersAtom);
-
-    return res.json();
   }
 );
 
@@ -232,14 +230,15 @@ export const updateUserAtom = atom(
       json: data,
     });
 
-    if (!res.ok) {
-      throw new Error('Failed to update user');
+    switch (res.status) {
+      case 200: {
+        // Refresh users list after update
+        set(usersAtom);
+        return res.json();
+      }
+      default:
+        throw new Error('Failed to update user');
     }
-
-    // Refresh users list after update
-    set(usersAtom);
-
-    return res.json();
   }
 );
 

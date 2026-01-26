@@ -170,14 +170,13 @@ const getUsers = async () => {
   const res = await client.users.$get();
   //               ▲ TypeScript knows: Response promise
 
-  if (!res.ok) {
-    throw new Error('Failed to fetch users');
+  switch (res.status) {
+    case 200:
+      return res.json();
+      //    ▲ TypeScript knows the exact return type from route definition
+    default:
+      throw new Error('Failed to fetch users');
   }
-
-  const users = await res.json();
-  //    ▲ TypeScript knows the exact return type from route definition
-
-  return users;
 };
 
 // POST with typed body
@@ -257,12 +256,15 @@ const UserProfile = () => {
       //       ▲ TypeScript requires 'id' param
     });
 
-    if (res.status === 404) {
-      return null;
+    switch (res.status) {
+      case 200:
+        return res.json();
+        //         ▲ Return type is inferred from route
+      case 404:
+        return null;
+      default:
+        throw new Error('Failed to fetch user');
     }
-
-    return res.json();
-    //         ▲ Return type is inferred from route
   };
 
   // POST with validation
@@ -275,17 +277,21 @@ const UserProfile = () => {
       },
     });
 
-    if (res.status === 400) {
-      // Validation error
-      const error = await res.json();
-      console.error(error);
-      return;
-    }
-
-    if (res.status === 201) {
-      // Success
-      const data = await res.json();
-      console.log('Created:', data.success);
+    switch (res.status) {
+      case 201: {
+        // Success
+        const data = await res.json();
+        console.log('Created:', data.success);
+        break;
+      }
+      case 400: {
+        // Validation error
+        const error = await res.json();
+        console.error(error);
+        break;
+      }
+      default:
+        throw new Error('Failed to create user');
     }
   };
 };
@@ -302,11 +308,17 @@ import { client } from '@adapters/client';
 const fetchUsersAtom = atom(async () => {
   const res = await client.users.$get();
 
-  if (res.status === 401) throw new UnauthorizedError();
-  if (res.status === 500) throw new UnknownError();
-
-  return res.json();
-  //         ▲ TypeScript infers correct return type
+  switch (res.status) {
+    case 200:
+      return res.json();
+      //         ▲ TypeScript infers correct return type
+    case 401:
+      throw new UnauthorizedError();
+    case 500:
+      throw new UnknownError();
+    default:
+      throw new Error(`Unexpected status: ${res.status}`);
+  }
 });
 
 // Mutation atom with typed input
@@ -316,11 +328,12 @@ const createUserAtom = atom(
     const res = await client.users.$post({ json: input });
     //                                          ▲ Type checked against schema
 
-    if (!res.ok) {
-      throw new Error('Failed to create user');
+    switch (res.status) {
+      case 201:
+        return res.json();
+      default:
+        throw new Error('Failed to create user');
     }
-
-    return res.json();
   }
 );
 ```
