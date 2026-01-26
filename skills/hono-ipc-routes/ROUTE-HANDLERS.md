@@ -151,26 +151,15 @@ export const events = { routes };
 
 ## Observable to Value Conversion
 
-```typescript
-// src/main/utils/observable.ts
-import { firstValueFrom, Observable } from 'rxjs';
-import { ok, err, Result } from 'neverthrow';
+For Query handlers (GET), use `firstValueFromResult` to convert `Observable<T>` to `Result<T, Error>`:
 
-/**
- * Converts Observable<T> to Promise<Result<T, Error>>.
- * Used in route handlers to get a single value from service queries.
- */
-export const firstValueFromResult = async <T>(
-  observable: Observable<T>
-): Promise<Result<T, Error>> => {
-  try {
-    const value = await firstValueFrom(observable);
-    return ok(value);
-  } catch (e) {
-    return err(e instanceof Error ? e : new Error(String(e)));
-  }
-};
+```typescript
+import { firstValueFromResult } from '@utils/observable';
+
+const result = await firstValueFromResult(c.var.services.event.active());
 ```
+
+> See [ERROR-HANDLING.md](./ERROR-HANDLING.md) for implementation details and error class definitions.
 
 ## Dependency Injection Pattern
 
