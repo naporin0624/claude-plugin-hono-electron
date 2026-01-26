@@ -134,9 +134,6 @@ streamNotificationsAtom.onMount = (set) => {
     }
   }, 300);  // 300ms debounce
 
-  // Immediate initial fetch
-  handleNotificationsUpdate();
-
   // Subscribe to IPC events for ongoing updates
   // Returns unsubscribe function for cleanup
   return notificationsSource.subscribe(handleNotificationsUpdate);
@@ -274,7 +271,6 @@ streamDataAtom.onMount = (set) => {
     }
   }, 300);
 
-  handleUpdate();
   return dataSource.subscribe(handleUpdate);
 };
 ```

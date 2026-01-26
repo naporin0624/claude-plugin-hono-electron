@@ -63,8 +63,6 @@ streamUsersAtom.onMount = (set) => {
     }
   }, 300);
 
-  handleUpdate();  // Immediate initial fetch
-
   return usersSource.subscribe(handleUpdate);  // Subscribe to IPC
 };
 
@@ -287,16 +285,29 @@ TIME: t0 (Component Mount)
   Component renders with HTTP data ✓
 
 
-TIME: t1 (Stream Ready)
+TIME: t1 (Stream Subscription)
 ═══════════════════════════════════════════════════════════
 
   streamUsersAtom.onMount executes
        │
-       ├── Immediate fetch via HTTP
-       │
        └── Subscribe to IPC events
               │
               ▼
+  Waiting for IPC event from main process...
+
+
+TIME: t2 (IPC Event Received)
+═══════════════════════════════════════════════════════════
+
+  Main Process: data changes → webContents.send('app:users')
+       │
+       ▼
+  usersSource notifies subscribers
+       │
+       ▼
+  Debounced handler fetches via HTTP
+       │
+       ▼
   streamUsersAtom.value = fetched data
        │
        ▼
@@ -311,7 +322,7 @@ TIME: t1 (Stream Ready)
   Component re-renders with stream data ✓
 
 
-TIME: t2+ (Updates)
+TIME: t3+ (Subsequent Updates)
 ═══════════════════════════════════════════════════════════
 
   Main Process: Service Observable emits

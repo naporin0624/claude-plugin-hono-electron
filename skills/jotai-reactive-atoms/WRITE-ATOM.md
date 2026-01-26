@@ -77,7 +77,6 @@ streamUsersAtom.onMount = (set) => {
     }
   }, 300);
 
-  handleUpdate();
   return usersSource.subscribe(handleUpdate);
 };
 
