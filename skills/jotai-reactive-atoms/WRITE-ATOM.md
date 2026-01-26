@@ -740,54 +740,9 @@ TIME: t2 (Error case - server rejects)
   UI automatically reverts to "Old Name" ✓ (auto-rollback)
 ```
 
-### Alternative: Atom-Level Optimistic Updates
-
-For cases where you need optimistic updates at the atom level:
-
-```typescript
-/**
- * Optimistic delete with rollback on error.
- */
-export const optimisticDeleteUserAtom = atom(
-  null,
-  async (get, set, id: string) => {
-    // Save current state for rollback
-    const previousUsers = get(usersAtom);
-
-    // Optimistic update - remove user immediately
-    set(streamUsersAtom, {
-      value: previousUsers.filter((u) => u.id !== id),
-    });
-
-    try {
-      const res = await client.users[':id'].$delete({ param: { id } });
-
-      switch (res.status) {
-        case 200:
-          return res.json();
-        case 404:
-          throw new NotFoundError('User not found');
-        default:
-          throw new Error('Failed to delete user');
-      }
-    } catch (error) {
-      // Rollback on error
-      set(streamUsersAtom, { value: previousUsers });
-      throw error;
-    }
-  }
-);
-```
-
-### When to Use Each Approach
-
-| Approach | Use Case |
-|----------|----------|
-| `useOptimisticValue` | Single field updates, form inputs, toggles |
-| Atom-level optimistic | List operations (add/remove), complex state changes |
-
 ## Related Documentation
 
 - [HYBRID-ATOM.md](HYBRID-ATOM.md) - Read atom patterns with stream + HTTP fallback
 - [EVENT-SUBSCRIPTION.md](EVENT-SUBSCRIPTION.md) - IPC subscription optimization
-- [examples/write-atom.ts](examples/write-atom.ts) - Complete implementation
+- [examples/write-atom.ts](examples/write-atom.ts) - Write atom implementation
+- [examples/use-optimistic-value.ts](examples/use-optimistic-value.ts) - Optimistic update hook

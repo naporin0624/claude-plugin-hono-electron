@@ -379,5 +379,6 @@ export const worldAtom = atomFamily((id: string) =>
 - [HYBRID-ATOM.md](HYBRID-ATOM.md) - Detailed hybrid pattern implementation (read operations)
 - [WRITE-ATOM.md](WRITE-ATOM.md) - Write atom patterns (create, update, delete)
 - [EVENT-SUBSCRIPTION.md](EVENT-SUBSCRIPTION.md) - IPC subscription optimization
-- [examples/hybrid-atom.ts](examples/hybrid-atom.ts) - Complete read atom implementation
-- [examples/write-atom.ts](examples/write-atom.ts) - Complete write atom implementation
+- [examples/hybrid-atom.ts](examples/hybrid-atom.ts) - Read atom implementation
+- [examples/write-atom.ts](examples/write-atom.ts) - Write atom implementation
+- [examples/use-optimistic-value.ts](examples/use-optimistic-value.ts) - Optimistic update hook
