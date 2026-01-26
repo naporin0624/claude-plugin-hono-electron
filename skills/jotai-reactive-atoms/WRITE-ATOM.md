@@ -70,8 +70,15 @@ type UpdateUserData = Partial<Pick<User, 'displayName' | 'bio' | 'note'>>;
 
 const singleFetchUsersAtom = atomWithRefresh(async (): Promise<User[]> => {
   const res = await client.users.$get();
-  if (!res.ok) throw new Error('Failed to fetch users');
-  return res.json();
+
+  switch (res.status) {
+    case 200:
+      return res.json();
+    case 401:
+      throw new UnauthorizedError();
+    default:
+      throw new Error('Failed to fetch users');
+  }
 });
 
 const streamUsersAtom = atom<{ value: User[] }>();
@@ -79,8 +86,13 @@ const streamUsersAtom = atom<{ value: User[] }>();
 streamUsersAtom.onMount = (set) => {
   const handleUpdate = debounce(async () => {
     const res = await client.users.$get();
-    if (res.ok) {
-      set({ value: await res.json() });
+
+    switch (res.status) {
+      case 200:
+        set({ value: await res.json() });
+        break;
+      default:
+        console.error('Failed to fetch users:', res.status);
     }
   }, 300);
 
@@ -592,7 +604,164 @@ describe('Write Atoms', () => {
 - Use generic error messages
 - Ignore 4xx client errors (they indicate user/data issues)
 
-## Advanced: Optimistic Updates
+## Advanced: Optimistic Updates with useOptimisticValue
+
+React's built-in `useOptimistic` hook has issues with external state (like Jotai atoms).
+Use `useOptimisticValue` instead - it uses timestamp comparison to always show the latest value.
+
+### useOptimisticValue Hook
+
+```typescript
+// src/renderer/src/hooks/use-optimistic-value.ts
+import { useCallback, useMemo, useState, useTransition } from 'react';
+
+type TimestampedValue<T> = {
+  ts: number;
+  value: T;
+};
+
+type UseOptimisticValueReturn<T> = {
+  value: T;
+  isPending: boolean;
+  updateOptimistically: (newValue: T) => void;
+};
+
+/**
+ * Timestamp-based optimistic update hook for external state.
+ *
+ * React's useOptimistic relies on internal state, causing issues
+ * with external state (Jotai, etc.). This hook uses timestamp
+ * comparison to always display the latest value.
+ *
+ * @template T - Type of the managed value
+ * @param realValue - Actual value from data source
+ * @param onUpdate - Async function to perform the actual update
+ * @returns Object containing current value, pending state, and update function
+ */
+export const useOptimisticValue = <T = unknown>(
+  realValue: T,
+  onUpdate: (value: T) => Promise<void> | void
+): UseOptimisticValueReturn<T> => {
+  // Convert realValue to timestamped value
+  const real = useMemo<TimestampedValue<T>>(
+    () => ({ ts: Date.now(), value: realValue }),
+    [realValue]
+  );
+
+  // Manage optimistic value with timestamp
+  const [optimistic, setOptimistic] = useState<TimestampedValue<T>>(real);
+
+  // Compare timestamps to select the latest value
+  const value = real.ts > optimistic.ts ? real.value : optimistic.value;
+
+  // Manage pending state with React Transition
+  const [isPending, startTransition] = useTransition();
+
+  // Update optimistically and execute actual update
+  const updateOptimistically = useCallback(
+    (newValue: T) => {
+      startTransition(() => {
+        setOptimistic({ ts: Date.now(), value: newValue });
+        void onUpdate(newValue);
+      });
+    },
+    [onUpdate]
+  );
+
+  return { value, isPending, updateOptimistically };
+};
+```
+
+### Usage with Write Atoms
+
+```tsx
+import { useAtom, useAtomValue } from 'jotai';
+import { useOptimisticValue } from '@hooks/use-optimistic-value';
+import { usersAtom, updateUserAtom } from '../atoms/users.atom';
+
+const UserCard = ({ userId }: { userId: string }) => {
+  const users = useAtomValue(usersAtom);
+  const [, updateUser] = useAtom(updateUserAtom);
+
+  const user = users.find((u) => u.id === userId);
+  if (!user) return null;
+
+  // Use optimistic value for the display name
+  const {
+    value: displayName,
+    isPending,
+    updateOptimistically,
+  } = useOptimisticValue(user.displayName, async (newName) => {
+    await updateUser({ id: userId, data: { displayName: newName } });
+  });
+
+  const handleRename = () => {
+    const newName = prompt('Enter new name:', displayName);
+    if (newName && newName !== displayName) {
+      updateOptimistically(newName);  // Immediate UI update
+    }
+  };
+
+  return (
+    <div className={isPending ? 'opacity-50' : ''}>
+      <span>{displayName}</span>
+      <button onClick={handleRename} disabled={isPending}>
+        {isPending ? 'Saving...' : 'Rename'}
+      </button>
+    </div>
+  );
+};
+```
+
+### How It Works
+
+```
+TIME: t0 (User clicks "Rename")
+═══════════════════════════════════════════════════════════
+
+  updateOptimistically("New Name")
+       │
+       ├── setOptimistic({ ts: 1000, value: "New Name" })  // Immediate
+       │
+       └── startTransition(() => updateUser(...))          // Background
+       │
+       ▼
+  UI shows "New Name" immediately ✓ (optimistic.ts > real.ts)
+
+
+TIME: t1 (Server responds)
+═══════════════════════════════════════════════════════════
+
+  Server returns success
+       │
+       ▼
+  usersAtom updates (via IPC or refresh)
+       │
+       ▼
+  real = { ts: 2000, value: "New Name" }  // real.ts > optimistic.ts
+       │
+       ▼
+  UI continues showing "New Name" ✓ (from real value now)
+
+
+TIME: t2 (Error case - server rejects)
+═══════════════════════════════════════════════════════════
+
+  Server returns error
+       │
+       ▼
+  usersAtom keeps old value
+       │
+       ▼
+  real = { ts: 2000, value: "Old Name" }  // real.ts > optimistic.ts
+       │
+       ▼
+  UI automatically reverts to "Old Name" ✓ (auto-rollback)
+```
+
+### Alternative: Atom-Level Optimistic Updates
+
+For cases where you need optimistic updates at the atom level:
 
 ```typescript
 /**
@@ -628,6 +797,13 @@ export const optimisticDeleteUserAtom = atom(
   }
 );
 ```
+
+### When to Use Each Approach
+
+| Approach | Use Case |
+|----------|----------|
+| `useOptimisticValue` | Single field updates, form inputs, toggles |
+| Atom-level optimistic | List operations (add/remove), complex state changes |
 
 ## Related Documentation
 

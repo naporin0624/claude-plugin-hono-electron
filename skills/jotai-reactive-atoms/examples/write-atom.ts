@@ -106,8 +106,13 @@ const streamUsersAtom = atom<{ value: User[] }>();
 streamUsersAtom.onMount = (set) => {
   const handleUpdate = debounce(async () => {
     const res = await client.users.$get();
-    if (res.ok) {
-      set({ value: await res.json() });
+
+    switch (res.status) {
+      case 200:
+        set({ value: await res.json() });
+        break;
+      default:
+        console.error('Failed to fetch users:', res.status);
     }
   }, 300);
 
@@ -657,4 +662,229 @@ export const UsersPage = () => (
     </Suspense>
   </div>
 );
+*/
+
+// ═══════════════════════════════════════════════════════════════════════════
+// useOptimisticValue Hook
+// ═══════════════════════════════════════════════════════════════════════════
+
+import { useCallback, useMemo, useState, useTransition } from 'react';
+
+type TimestampedValue<T> = {
+  ts: number;
+  value: T;
+};
+
+type UseOptimisticValueReturn<T> = {
+  value: T;
+  isPending: boolean;
+  updateOptimistically: (newValue: T) => void;
+};
+
+/**
+ * Timestamp-based optimistic update hook for external state.
+ *
+ * React's useOptimistic relies on internal state, causing issues
+ * with external state (Jotai, etc.). This hook uses timestamp
+ * comparison to always display the latest value.
+ *
+ * @template T - Type of the managed value
+ * @param realValue - Actual value from data source
+ * @param onUpdate - Async function to perform the actual update
+ * @returns Object containing current value, pending state, and update function
+ *
+ * @example
+ * ```tsx
+ * const { value, isPending, updateOptimistically } = useOptimisticValue(
+ *   user.displayName,
+ *   async (newName) => {
+ *     await updateUser({ id: user.id, data: { displayName: newName } });
+ *   }
+ * );
+ *
+ * // value shows optimistic update immediately
+ * // isPending is true while server request is in flight
+ * // When server responds, value automatically syncs
+ * ```
+ */
+export const useOptimisticValue = <T = unknown>(
+  realValue: T,
+  onUpdate: (value: T) => Promise<void> | void
+): UseOptimisticValueReturn<T> => {
+  // Convert realValue to timestamped value
+  const real = useMemo<TimestampedValue<T>>(
+    () => ({ ts: Date.now(), value: realValue }),
+    [realValue]
+  );
+
+  // Manage optimistic value with timestamp
+  const [optimistic, setOptimistic] = useState<TimestampedValue<T>>(real);
+
+  // Compare timestamps to select the latest value
+  const value = real.ts > optimistic.ts ? real.value : optimistic.value;
+
+  // Manage pending state with React Transition
+  const [isPending, startTransition] = useTransition();
+
+  // Update optimistically and execute actual update
+  const updateOptimistically = useCallback(
+    (newValue: T) => {
+      startTransition(() => {
+        setOptimistic({ ts: Date.now(), value: newValue });
+        void onUpdate(newValue);
+      });
+    },
+    [onUpdate]
+  );
+
+  return { value, isPending, updateOptimistically };
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// useOptimisticValue Usage Examples
+// ═══════════════════════════════════════════════════════════════════════════
+
+/*
+import { useAtom, useAtomValue } from 'jotai';
+import { useOptimisticValue } from './write-atom';
+import { usersAtom, updateUserAtom } from './users.atom';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Optimistic User Card - Single Field Update
+// ─────────────────────────────────────────────────────────────────────────────
+
+const OptimisticUserCard = ({ userId }: { userId: string }) => {
+  const users = useAtomValue(usersAtom);
+  const [, updateUser] = useAtom(updateUserAtom);
+
+  const user = users.find((u) => u.id === userId);
+  if (!user) return null;
+
+  // Use optimistic value for the display name
+  const {
+    value: displayName,
+    isPending,
+    updateOptimistically,
+  } = useOptimisticValue(user.displayName, async (newName) => {
+    // This runs in background while UI shows newName immediately
+    await updateUser({ id: userId, data: { displayName: newName } });
+  });
+
+  const handleRename = () => {
+    const newName = prompt('Enter new name:', displayName);
+    if (newName && newName !== displayName) {
+      updateOptimistically(newName);  // UI updates immediately
+    }
+  };
+
+  return (
+    <div className={isPending ? 'opacity-50' : ''}>
+      <span>{displayName}</span>
+      <button onClick={handleRename} disabled={isPending}>
+        {isPending ? 'Saving...' : 'Rename'}
+      </button>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Optimistic Toggle - Boolean Field
+// ─────────────────────────────────────────────────────────────────────────────
+
+const OptimisticToggle = ({ userId }: { userId: string }) => {
+  const users = useAtomValue(usersAtom);
+  const [, updateUser] = useAtom(updateUserAtom);
+
+  const user = users.find((u) => u.id === userId);
+  if (!user) return null;
+
+  const {
+    value: isActive,
+    isPending,
+    updateOptimistically,
+  } = useOptimisticValue(user.isActive, async (newValue) => {
+    await updateUser({ id: userId, data: { isActive: newValue } });
+  });
+
+  const handleToggle = () => {
+    updateOptimistically(!isActive);  // Toggle immediately
+  };
+
+  return (
+    <label className={isPending ? 'opacity-50' : ''}>
+      <input
+        type="checkbox"
+        checked={isActive}
+        onChange={handleToggle}
+        disabled={isPending}
+      />
+      {isActive ? 'Active' : 'Inactive'}
+      {isPending && ' (saving...)'}
+    </label>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Optimistic Bio Editor - Text Area
+// ─────────────────────────────────────────────────────────────────────────────
+
+const OptimisticBioEditor = ({ userId }: { userId: string }) => {
+  const users = useAtomValue(usersAtom);
+  const [, updateUser] = useAtom(updateUserAtom);
+  const [localBio, setLocalBio] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+
+  const user = users.find((u) => u.id === userId);
+  if (!user) return null;
+
+  const {
+    value: bio,
+    isPending,
+    updateOptimistically,
+  } = useOptimisticValue(user.bio ?? '', async (newBio) => {
+    await updateUser({ id: userId, data: { bio: newBio || null } });
+  });
+
+  const handleStartEdit = () => {
+    setLocalBio(bio);
+    setIsEditing(true);
+  };
+
+  const handleSave = () => {
+    if (localBio !== bio) {
+      updateOptimistically(localBio);
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <div>
+        <textarea
+          value={localBio}
+          onChange={(e) => setLocalBio(e.target.value)}
+          disabled={isPending}
+        />
+        <button onClick={handleSave} disabled={isPending}>
+          Save
+        </button>
+        <button onClick={handleCancel} disabled={isPending}>
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={isPending ? 'opacity-50' : ''}>
+      <p>{bio || 'No bio yet'}</p>
+      <button onClick={handleStartEdit}>Edit Bio</button>
+      {isPending && <span> (saving...)</span>}
+    </div>
+  );
+};
 */
