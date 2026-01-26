@@ -151,58 +151,15 @@ export const events = { routes };
 
 ## Observable to Value Conversion
 
+For Query handlers (GET), use `firstValueFromResult` to convert `Observable<T>` to `Result<T, Error>`:
+
 ```typescript
-// src/main/utils/observable.ts
-import { firstValueFrom, Observable, timeout, TimeoutError } from 'rxjs';
-import { Result, ResultAsync } from 'neverthrow';
-import {
-  QueryTimeoutError,
-  QueryError,
-  type FirstValueFromResultError,
-} from '@errors';
+import { firstValueFromResult } from '@utils/observable';
 
-const DEFAULT_TIMEOUT_MS = 5000;
-
-// Overload: no options
-export function firstValueFromResult<T>(
-  observable: Observable<T>
-): Promise<Result<T, FirstValueFromResultError>>;
-
-// Overload: timeout only
-export function firstValueFromResult<T>(
-  observable: Observable<T>,
-  options: { timeout: number }
-): Promise<Result<T, FirstValueFromResultError>>;
-
-// Overload: with defaultValue
-export function firstValueFromResult<T, D>(
-  observable: Observable<T>,
-  options: { timeout?: number; defaultValue: D }
-): Promise<Result<T | D, FirstValueFromResultError>>;
-
-// Implementation
-export async function firstValueFromResult<T, D = never>(
-  observable: Observable<T>,
-  options: { timeout?: number; defaultValue?: D } = {}
-): Promise<Result<T | D, FirstValueFromResultError>> {
-  const timeoutMs = options.timeout ?? DEFAULT_TIMEOUT_MS;
-  const config = 'defaultValue' in options
-    ? { defaultValue: options.defaultValue as D }
-    : undefined;
-
-  return ResultAsync.fromPromise(
-    firstValueFrom(observable.pipe(timeout(timeoutMs)), config),
-    (e): FirstValueFromResultError => {
-      if (e instanceof TimeoutError) {
-        return new QueryTimeoutError(timeoutMs);
-      }
-      return new QueryError(e);
-    }
-  );
-}
+const result = await firstValueFromResult(c.var.services.event.active());
 ```
 
-> **Note:** See [ERROR-HANDLING.md](./ERROR-HANDLING.md) for complete error handling patterns.
+> See [ERROR-HANDLING.md](./ERROR-HANDLING.md) for implementation details and error class definitions.
 
 ## Dependency Injection Pattern
 
