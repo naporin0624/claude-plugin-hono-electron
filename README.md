@@ -231,10 +231,7 @@ Implement CQRS (Command Query Responsibility Segregation) pattern:
 - **Commands**: Return `ResultAsync<void, Error>` for type-safe operations
 - **BehaviorSubject**: Bridge between queries and commands
 
-Files:
-- `skills/cqrs-pattern/SKILL.md` - Overview
-- `skills/cqrs-pattern/OBSERVABLE-PATTERN.md` - Query implementation
-- `skills/cqrs-pattern/RESULT-TYPES.md` - Command implementation
+See: `skills/cqrs-pattern/SKILL.md`
 
 #### jotai-reactive-atoms
 
@@ -244,10 +241,7 @@ Implement reactive Jotai atoms for Electron:
 - **Event Subscription**: Optimized IPC listener sharing
 - **Debouncing**: Prevent UI thrashing from rapid updates
 
-Files:
-- `skills/jotai-reactive-atoms/SKILL.md` - Overview
-- `skills/jotai-reactive-atoms/HYBRID-ATOM.md` - Stream + fallback pattern
-- `skills/jotai-reactive-atoms/EVENT-SUBSCRIPTION.md` - IPC optimization
+See: `skills/jotai-reactive-atoms/SKILL.md`
 
 #### hono-ipc-routes
 
@@ -257,10 +251,17 @@ Implement type-safe IPC routes with CQRS:
 - **Type Safety**: Full TypeScript inference from routes to client
 - **Zod Validation**: Schema-based request validation
 
-Files:
-- `skills/hono-ipc-routes/SKILL.md` - Overview
-- `skills/hono-ipc-routes/ROUTE-HANDLERS.md` - Route implementation
-- `skills/hono-ipc-routes/TYPE-SAFETY.md` - Type system patterns
+See: `skills/hono-ipc-routes/SKILL.md`
+
+#### suspense-boundary-design
+
+Design React Suspense boundaries for optimal loading states:
+
+- **ErrorBoundary + Suspense**: Combined error and loading handling
+- **Skeleton Loading**: Match skeleton to content size
+- **Boundary Granularity**: Group components sharing data under same boundary
+
+See: `skills/suspense-boundary-design/SKILL.md`
 
 ## Agents
 
