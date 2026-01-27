@@ -71,10 +71,12 @@ Preferred loading indicator style?
 </Layout>
 ```
 
-### Pattern 2: With ErrorBoundary
+### Pattern 2: With ErrorBoundary (react-error-boundary)
 
 ```tsx
-<ErrorBoundary fallback={<ErrorUI />}>
+import { ErrorBoundary } from 'react-error-boundary';
+
+<ErrorBoundary FallbackComponent={ErrorFallback}>
   <Suspense fallback={<Loading />}>
     <AsyncComponent />
   </Suspense>

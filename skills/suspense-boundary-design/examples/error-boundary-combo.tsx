@@ -1,46 +1,17 @@
-import { Component, Suspense, ReactNode } from 'react';
+import { Suspense } from 'react';
+import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 
-// Error Boundary component
-interface ErrorBoundaryProps {
-  children: ReactNode;
-  fallback: ReactNode;
-}
-
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error: Error | null;
-}
-
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback;
-    }
-    return this.props.children;
-  }
-}
-
-// Error UI with retry
-const ErrorUI = ({ onRetry }: { onRetry?: () => void }) => (
+// Error fallback component with retry
+const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => (
   <div className="p-4 bg-red-50 border border-red-200 rounded">
     <p className="text-red-700">Failed to load content</p>
-    {onRetry && (
-      <button
-        onClick={onRetry}
-        className="mt-2 px-4 py-2 bg-red-600 text-white rounded"
-      >
-        Retry
-      </button>
-    )}
+    <p className="text-sm text-red-500">{error.message}</p>
+    <button
+      onClick={resetErrorBoundary}
+      className="mt-2 px-4 py-2 bg-red-600 text-white rounded"
+    >
+      Retry
+    </button>
   </div>
 );
 
@@ -57,7 +28,7 @@ const AsyncContent = () => <div>Loaded Content</div>;
 
 // Correct pattern: ErrorBoundary wraps Suspense
 export const SafeAsyncComponent = () => (
-  <ErrorBoundary fallback={<ErrorUI />}>
+  <ErrorBoundary FallbackComponent={ErrorFallback}>
     <Suspense fallback={<ContentSkeleton />}>
       <AsyncContent />
     </Suspense>
@@ -66,7 +37,7 @@ export const SafeAsyncComponent = () => (
 
 // Multiple components with shared error boundary
 export const ComponentGroup = () => (
-  <ErrorBoundary fallback={<ErrorUI />}>
+  <ErrorBoundary FallbackComponent={ErrorFallback}>
     <div className="grid grid-cols-2 gap-4">
       <Suspense fallback={<ContentSkeleton />}>
         <AsyncContent />
@@ -75,5 +46,19 @@ export const ComponentGroup = () => (
         <AsyncContent />
       </Suspense>
     </div>
+  </ErrorBoundary>
+);
+
+// With onReset handler for state cleanup
+export const SafeAsyncWithReset = () => (
+  <ErrorBoundary
+    FallbackComponent={ErrorFallback}
+    onReset={() => {
+      // Reset any state that caused the error
+    }}
+  >
+    <Suspense fallback={<ContentSkeleton />}>
+      <AsyncContent />
+    </Suspense>
   </ErrorBoundary>
 );
