@@ -122,3 +122,7 @@ Use for data that:
 - [examples/hybrid-atom.ts](examples/hybrid-atom.ts) - Read atom implementation
 - [examples/write-atom.ts](examples/write-atom.ts) - Write atom implementation
 - [examples/use-optimistic-value.ts](examples/use-optimistic-value.ts) - Optimistic update hook
+
+## Related Skills
+
+- [suspense-boundary-design](../suspense-boundary-design/SKILL.md) - Suspense boundary placement and ErrorBoundary patterns
