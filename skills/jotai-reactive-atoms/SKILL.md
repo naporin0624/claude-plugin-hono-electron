@@ -108,7 +108,7 @@ Use for data that:
 
 ## Key Rules
 
-1. **Hybrid atom getter must NOT be async** - `async` functions always return Promise, even for sync values. This causes Suspense to trigger on EVERY IPC update, resulting in UI flickering. See [HYBRID-ATOM.md - Why not use async](HYBRID-ATOM.md#why-not-use-async---understanding-suspense-behavior) for details.
+1. **Hybrid atom getter must NOT be async** - See [Why not use async](HYBRID-ATOM.md#why-not-use-async---understanding-suspense-behavior)
 2. **No initial fetch in onMount** - singleFetchAtom handles initial load
 3. **Always debounce IPC handlers** - prevents excessive fetches
 4. **Use switch(res.status)** - not res.ok
