@@ -133,6 +133,7 @@ export class UserServiceImpl implements UserService {
 
 ## Additional Resources
 
+- [SERVICE-INTERFACE.md](SERVICE-INTERFACE.md) - Why use `.d.ts` files for service interface definitions
 - [OBSERVABLE-PATTERN.md](OBSERVABLE-PATTERN.md) - Detailed Observable implementation
 - [RESULT-TYPES.md](RESULT-TYPES.md) - ResultAsync and error handling
 - [MAIN-PROCESS-SUBSCRIPTION.md](MAIN-PROCESS-SUBSCRIPTION.md) - Main process Observable subscription and webContents.send pattern
