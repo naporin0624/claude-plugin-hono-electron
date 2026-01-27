@@ -70,11 +70,17 @@ function createWindowRegistry() {
       windows.set(id, window);
       window.on('closed', () => windows.delete(id));
     },
+    unregister(id: string): void {
+      windows.delete(id);
+    },
     send<T>(windowId: string, channel: string, data: T): void {
       const window = windows.get(windowId);
       if (window && !window.isDestroyed()) {
         window.webContents.send(channel, data);
       }
+    },
+    disposeAll(): void {
+      windows.clear();
     },
   };
 }
