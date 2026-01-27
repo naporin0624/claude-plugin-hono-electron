@@ -135,4 +135,6 @@ export class UserServiceImpl implements UserService {
 
 - [OBSERVABLE-PATTERN.md](OBSERVABLE-PATTERN.md) - Detailed Observable implementation
 - [RESULT-TYPES.md](RESULT-TYPES.md) - ResultAsync and error handling
+- [MAIN-PROCESS-SUBSCRIPTION.md](MAIN-PROCESS-SUBSCRIPTION.md) - Main process Observable subscription and webContents.send pattern
 - [examples/event-service.ts](examples/event-service.ts) - Complete implementation example
+- [examples/main-subscription.ts](examples/main-subscription.ts) - Main process subscription setup example

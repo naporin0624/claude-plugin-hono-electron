@@ -212,15 +212,19 @@ const subscription = new Subscription();
 // Subscribe to service observables
 subscription.add(
   eventService.active().subscribe((event) => {
-    // Push to renderer via IPC
-    window.webContents.send('app:activeEvent', event);
+    // Check window validity before sending
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('app:activeEvent', event);
+    }
   })
 );
 
 subscription.add(
   eventService.notify().subscribe((snapshot) => {
     // Push granular updates
-    window.webContents.send('app:modify:event', snapshot);
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('app:modify:event', snapshot);
+    }
   })
 );
 
@@ -230,6 +234,8 @@ app.on('window-all-closed', () => {
   app.quit();
 });
 ```
+
+For detailed patterns including multi-window support, error handling, and per-window subscriptions, see [MAIN-PROCESS-SUBSCRIPTION.md](MAIN-PROCESS-SUBSCRIPTION.md).
 
 ## Testing Pattern
 
