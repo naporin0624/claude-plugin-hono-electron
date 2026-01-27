@@ -108,7 +108,7 @@ Use for data that:
 
 ## Key Rules
 
-1. **Hybrid atom getter must NOT be async** - causes unnecessary Suspense
+1. **Hybrid atom getter must NOT be async** - See [Why not use async](HYBRID-ATOM.md#why-not-use-async---understanding-suspense-behavior)
 2. **No initial fetch in onMount** - singleFetchAtom handles initial load
 3. **Always debounce IPC handlers** - prevents excessive fetches
 4. **Use switch(res.status)** - not res.ok

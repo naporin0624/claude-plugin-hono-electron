@@ -183,6 +183,104 @@ export const refreshNotificationsAtom = atom(null, (_get, set) => {
 });
 ```
 
+## Why not use async - Understanding Suspense behavior
+
+### The Problem
+
+When using `async` functions in Jotai atom getters, **even synchronous values become Promise-wrapped**, causing Suspense fallbacks to display repeatedly during IPC updates. This results in UI flickering.
+
+### How async Functions Work
+
+```typescript
+// async functions ALWAYS return a Promise, even for synchronous returns
+async function getValue() {
+  return 42;  // This becomes Promise.resolve(42), not 42
+}
+
+typeof getValue()  // "object" (Promise)
+```
+
+### Anti-pattern: Using async in Hybrid Atom Getter
+
+```typescript
+// ❌ WRONG: async causes Suspense on EVERY update
+export const usersAtom = atom(async (get) => {
+  const stream = get(streamUsersAtom);
+
+  // Even though stream.value is synchronous data,
+  // async wraps it in a Promise → triggers Suspense
+  if (stream !== undefined) {
+    return stream.value;  // Promise<User[]> - triggers Suspense!
+  }
+
+  return get(singleFetchUsersAtom);
+});
+```
+
+**What happens:**
+```
+IPC Event → Stream Update → async returns Promise → Suspense triggers → Fallback flickers
+IPC Event → Stream Update → async returns Promise → Suspense triggers → Fallback flickers
+IPC Event → Stream Update → async returns Promise → Suspense triggers → Fallback flickers
+...
+```
+
+### Correct Pattern: Remove async
+
+```typescript
+// ✅ CORRECT: No async, synchronous values return directly
+export const usersAtom = atom((get) => {
+  const stream = get(streamUsersAtom);
+
+  // Stream data returns synchronously - no Suspense triggered
+  if (stream !== undefined) {
+    return stream.value;  // User[] - no Suspense!
+  }
+
+  // Only the async atom triggers Suspense (initial load only)
+  return get(singleFetchUsersAtom);
+});
+```
+
+**What happens:**
+```
+Initial Load → No stream → get(singleFetchUsersAtom) → Suspense → Data loads → Renders
+IPC Event → Stream Update → Returns sync value → No Suspense → Immediate re-render
+IPC Event → Stream Update → Returns sync value → No Suspense → Immediate re-render
+...
+```
+
+### Key Insight: Conditional Async
+
+The hybrid pattern leverages a key insight: **atoms can return either synchronous values or Promises conditionally**.
+
+```typescript
+atom((get) => {
+  // Branch 1: Synchronous return (no Suspense)
+  if (syncDataAvailable) {
+    return syncData;
+  }
+
+  // Branch 2: Async return (triggers Suspense)
+  return get(asyncAtom);  // Returns Promise
+});
+```
+
+This enables:
+1. **Real-time updates without Suspense** - Stream data returns synchronously
+2. **Graceful initial load with Suspense** - HTTP fallback handles first render
+3. **No UI flickering** - Only one Suspense trigger per component lifecycle
+
+### Summary
+
+| Approach | Return Type | Suspense Behavior |
+|----------|-------------|-------------------|
+| `async (get) => stream.value` | Always `Promise<T>` | Triggers on EVERY update |
+| `(get) => stream.value` | `T` (sync) | Never triggers |
+| `(get) => get(asyncAtom)` | `Promise<T>` | Triggers once (initial) |
+
+**Rule: Never use `async` on hybrid atom getters. Let the conditional logic handle when Suspense should trigger.**
+
 ## Debounce Implementation
 
 ```typescript
