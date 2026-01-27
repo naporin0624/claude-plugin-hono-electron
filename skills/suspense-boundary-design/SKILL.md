@@ -6,21 +6,13 @@ allowed-tools: Read, Write, Edit, Grep, Glob
 
 # Suspense Boundary Design
 
-Interview user with AskUserQuestion about:
+## Interview Questions
+
 1. **Loading units** - Which components load independently?
 2. **Error handling** - Show error UI, retry button, or bubble up?
 3. **Loading UI** - Skeleton, spinner, or shimmer?
 
-## Granularity Trade-offs
-
-| Granularity | UX | Complexity |
-|-------------|-----|------------|
-| Coarse (page) | Full-page loading | Simple |
-| Fine (component) | Independent loading | More boundaries |
-
-## Patterns
-
-### ErrorBoundary + Suspense
+## Pattern
 
 ```tsx
 import { ErrorBoundary } from 'react-error-boundary';
@@ -43,4 +35,3 @@ import { ErrorBoundary } from 'react-error-boundary';
 ## Related
 
 - [jotai-reactive-atoms/HYBRID-ATOM.md](../jotai-reactive-atoms/HYBRID-ATOM.md) - Suspense with async atoms
-- [examples/](examples/) - Implementation examples
